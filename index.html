@@ -37,7 +37,7 @@
       <div class="jumbotron">
         <h1 class="display-4">Anagrames</h1>
         <p class="lead">Cercador d'anagrames en català. Actiu fins al 16 de maig de 2021.</p>
-        <p class="lead">Desenvolupat per <a href="https://alvaromartinezmajado.com" target="_blank">á</a> i <a href="https://twitter.com/urixturing" target="_blank">Urix Turing</a>.</p>
+        <p class="lead">Desenvolupat per <a href="https://alvaromartinezmajado.com" target="_blank">á</a> i <a href="https://twitter.com/urixturing" target="_blank">Urix Turing</a> a partir del diccionari de <a href="https://github.com/Softcatala/catalan-dict-tools">SoftCatalà</a>.</p>
       </div>
       
       <div class="row align-items-start">
@@ -69,16 +69,26 @@
             var word = $("#inputWord").val();
             $.get("https://magrana.lamaquinadeturing.su/api/anagrams/" + word, function(data, status) {
               $("#anagram-list").empty();
-              if (status) {
-                obj = $.parseJSON(data);
-                if (obj.error == null) {
-                  $("#word").html("Anagrames de: <span>" + obj.word + "</span>");
+              obj = $.parseJSON(data);
+              $("#word").html("Anagrames de: <span>" + obj.word + "</span>");
+              if (obj.error == null) {
+                if (obj.anagrams.length == 0) {
+                  $("#anagram-list").append("<span class=\"badge badge-secondary\">Paraula no trobada</span>");
+                } else {
                   obj.anagrams.forEach(function (anagram) {
-                    if (anagram != obj.word)
+                    if (anagram == obj.word)
+                      $("#anagram-list").append("<span class=\"badge badge-secondary\"><a href=\"https://dlc.iec.cat/Results?DecEntradaText=" + anagram + "\" target=\"_blank\">" + anagram + "</a></span> ");
+                    else
                       $("#anagram-list").append("<span class=\"badge badge-info\"><a href=\"https://dlc.iec.cat/Results?DecEntradaText=" + anagram + "\" target=\"_blank\">" + anagram + "</a></span> ");
                   });
                 }
+              } else if (obj.error == "Word too long") {
+                $("#anagram-list").append("<span class=\"badge badge-danger\">Paraula massa llarga</span>");
+              } else {
+                $("#anagram-list").append("<span class=\"badge badge-danger\">Error</span>");
               }
+            }).fail(function() {
+              $("#word").html("<span class=\"badge badge-danger\">No he pogut contactar amb el servidor :(</span>");
             });
           });
         });
