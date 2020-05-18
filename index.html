@@ -67,6 +67,8 @@
           $("#submit").click(function(e){
             e.preventDefault();
             var word = $("#inputWord").val();
+            if (!word)
+              return;
             $.get("https://magrana.lamaquinadeturing.su/api/anagrams/" + word, function(data, status) {
               $("#anagram-list").empty();
               obj = $.parseJSON(data);
@@ -87,12 +89,19 @@
               } else {
                 $("#anagram-list").append("<span class=\"badge badge-danger\">Error</span>");
               }
-            }).fail(function() {
+            }).fail(function(jqXHR, textStatus, errorThrown) {
+              $("#anagram-list").empty();
+              console.log(jqXHR);
+              console.log(jqXHR.status);
+              console.log(textStatus);
+              console.log(errorThrown);
               if (word == '') {
                 $("#word").html("<span class=\"badge badge-danger\">No has escrit cap paraula :(</span>");
+              } else if (jqXHR.status > 0) {
+                $("#word").html("<span class=\"badge badge-danger\">El servidor es queixa (error " + jqXHR.status + ")</span>");
               } else {
                 $("#word").html("<span class=\"badge badge-danger\">No he pogut contactar amb el servidor :(</span>");
-              }             
+              }
             });
           });
         });
