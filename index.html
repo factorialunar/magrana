@@ -88,7 +88,11 @@
                 $("#anagram-list").append("<span class=\"badge badge-danger\">Error</span>");
               }
             }).fail(function() {
-              $("#word").html("<span class=\"badge badge-danger\">No he pogut contactar amb el servidor :(</span>");
+              if (word == '') {
+                $("#word").html("<span class=\"badge badge-danger\">No has escrit cap paraula :(</span>");
+              } else {
+                $("#word").html("<span class=\"badge badge-danger\">No he pogut contactar amb el servidor :(</span>");
+              }             
             });
           });
         });
