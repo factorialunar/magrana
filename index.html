@@ -36,8 +36,8 @@
     <div class="container">
       <div class="jumbotron">
         <h1 class="display-4">Anagrames</h1>
-        <p class="lead">Cercador d'anagrames en català. Actiu fins al 16 de maig de 2021.</p>
-        <p class="lead">Desenvolupat per <a href="https://alvaromartinezmajado.com" target="_blank">á</a> i <a href="https://twitter.com/urixturing" target="_blank">Urix Turing</a> a partir del diccionari de <a href="https://github.com/Softcatala/catalan-dict-tools">SoftCatalà</a>.</p>
+        <p class="lead">Cercador d'anagrames en català.</p>
+        <p class="lead">Desenvolupat per <a href="https://alvaromartinezmajado.com" target="_blank">á</a> i <a href="https://github.com/oriolarcas" target="_blank">Oriol Arcas</a> a partir del diccionari de <a href="https://github.com/Softcatala/catalan-dict-tools">SoftCatalà</a>.</p>
       </div>
       
       <div class="row align-items-start">
@@ -61,48 +61,96 @@
       <script src="https://code.jquery.com/jquery-3.4.1.min.js" crossorigin="anonymous"></script>
       <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
       <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-      <!-- Optional JavaScript -->
+      <!-- File index -->
+      <script src="index.js"></script>
       <script>
+        // Map<prefix:string, Map<key:string, Array<word:string>>>
+        var anagram_cache = new Map();
+
         $(document).ready(function() {
           $("#submit").click(function(e){
             e.preventDefault();
-            var word = $("#inputWord").val();
+            const word = $("#inputWord").val();
             if (!word)
               return;
-            $.get("https://magrana.lamaquinadeturing.su/api/anagrams/" + word, function(data, status) {
-              $("#anagram-list").empty();
-              obj = $.parseJSON(data);
-              $("#word").html("Anagrames de: <span>" + obj.word + "</span>");
-              if (obj.error == null) {
-                if (obj.anagrams.length == 0) {
-                  $("#anagram-list").append("<span class=\"badge badge-secondary\">Paraula no trobada</span>");
-                } else {
-                  obj.anagrams.forEach(function (anagram) {
-                    if (anagram == obj.word)
-                      $("#anagram-list").append("<span class=\"badge badge-secondary\"><a href=\"https://dlc.iec.cat/Results?DecEntradaText=" + anagram + "\" target=\"_blank\">" + anagram + "</a></span> ");
-                    else
-                      $("#anagram-list").append("<span class=\"badge badge-info\"><a href=\"https://dlc.iec.cat/Results?DecEntradaText=" + anagram + "\" target=\"_blank\">" + anagram + "</a></span> ");
-                  });
+
+            const anagram_key = word.split('').map((c) => CharMap[c] || "").toSorted().join("");
+
+            // console.log(anagram_key);
+
+            const find_file = function(anagram_key) {
+              for (const [key, attr] of Object.entries(AnagramIndex)) {
+                const is_prefix = attr.is_prefix ?? true;
+                
+                if (!is_prefix) {
+                  if (anagram_key != key) {
+                    continue;
+                  }
+                  // console.log("Non-prefix match: " + key);
+                  return attr.file;
                 }
-              } else if (obj.error == "Word too long") {
-                $("#anagram-list").append("<span class=\"badge badge-danger\">Paraula massa llarga</span>");
-              } else {
-                $("#anagram-list").append("<span class=\"badge badge-danger\">Error</span>");
+
+                if (anagram_key.startsWith(key)) {
+                  // console.log("Prefix match: " + key);
+                  return attr.file;
+                }
               }
-            }).fail(function(jqXHR, textStatus, errorThrown) {
+
+              return null;
+            };
+
+            const anagram_file = find_file(anagram_key);
+
+            // console.log(anagram_file);
+            
+            if (anagram_file === null) {
+              $("#word").html("<span class=\"badge badge-danger\">Paraula no trobada</span>");
+              return;
+            }
+
+            const show_word = function(word, key) {
               $("#anagram-list").empty();
-              console.log(jqXHR);
-              console.log(jqXHR.status);
-              console.log(textStatus);
-              console.log(errorThrown);
-              if (word == '') {
-                $("#word").html("<span class=\"badge badge-danger\">No has escrit cap paraula :(</span>");
-              } else if (jqXHR.status > 0) {
-                $("#word").html("<span class=\"badge badge-danger\">El servidor es queixa (error " + jqXHR.status + ")</span>");
-              } else {
-                $("#word").html("<span class=\"badge badge-danger\">No he pogut contactar amb el servidor :(</span>");
+
+              // console.log("Show word: " + word);
+
+              const anagrams = anagram_cache.get(anagram_file)[key];
+
+              if (anagrams === undefined) {
+                $("#anagram-list").append("<span class=\"badge badge-danger\">Paraula no trobada</span>");
+                return;
               }
-            });
+
+              $("#word").html("Anagrames de: <span>" + word + "</span>");
+              anagrams.forEach(function (anagram) {
+                if (anagram == word)
+                  $("#anagram-list").append("<span class=\"badge badge-secondary\"><a href=\"https://dlc.iec.cat/Results?DecEntradaText=" + anagram + "\" target=\"_blank\">" + anagram + "</a></span> ");
+                else
+                  $("#anagram-list").append("<span class=\"badge badge-info\"><a href=\"https://dlc.iec.cat/Results?DecEntradaText=" + anagram + "\" target=\"_blank\">" + anagram + "</a></span> ");
+              });
+            };
+
+            if (anagram_cache.has(anagram_file)) {
+              show_word(word, anagram_key);
+            } else {
+              $.get("data/" + anagram_file, function(obj, status) {
+                // console.log("File downloaded: " + anagram_file);
+                anagram_cache.set(anagram_file, obj);
+                show_word(word, anagram_key);
+              }).fail(function(jqXHR, textStatus, errorThrown) {
+                $("#anagram-list").empty();
+                // console.log(jqXHR);
+                // console.log(jqXHR.status);
+                // console.log(textStatus);
+                // console.log(errorThrown);
+                if (word == '') {
+                  $("#word").html("<span class=\"badge badge-danger\">No has escrit cap paraula :(</span>");
+                } else if (jqXHR.status > 0) {
+                  $("#word").html("<span class=\"badge badge-danger\">El servidor es queixa (error " + jqXHR.status + ")</span>");
+                } else {
+                  $("#word").html("<span class=\"badge badge-danger\">No he pogut contactar amb el servidor :(</span>");
+                }
+              });
+            }
           });
         });
       </script>
