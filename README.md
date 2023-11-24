@@ -29,6 +29,6 @@ Les paraules provenen del corrector ortogràfic de [SoftCatalà](https://github.
 
 ## Llicència
 
-D'aquest repositori: GPLv3.
+D'aquest repositori: [GPLv3](LICENSE).
 
 De la [llista de paraules](https://github.com/Softcatala/catalan-dict-tools).
